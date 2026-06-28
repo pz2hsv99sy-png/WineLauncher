@@ -10,6 +10,8 @@ class GameStore: ObservableObject {
     @Published var setupProgress: [UUID: SetupProgress] = [:]
     @Published var hudCorner: HUDCorner = HUDCorner(rawValue: UserDefaults.standard.string(forKey: "hudCorner") ?? "") ?? .topRight
 
+    private var setupTasks: [UUID: Task<Void, Never>] = [:]
+
     var hudCornerBinding: Binding<HUDCorner> {
         Binding(get: { self.hudCorner }, set: { v in
             self.hudCorner = v
@@ -45,7 +47,22 @@ class GameStore: ObservableObject {
 
         if sharedPrefix == nil {
             let id = game.id
-            Task { await runSetup(gameID: id) }
+            let task = Task { await runSetup(gameID: id) }
+            setupTasks[id] = task
+        }
+    }
+
+    func cancelSetup(id: UUID) {
+        setupTasks[id]?.cancel()
+        setupTasks.removeValue(forKey: id)
+        // Kill any running winetricks/wine processes
+        let _ = try? Process.run(URL(fileURLWithPath: "/bin/sh"),
+            arguments: ["-c", "pkill -f winetricks; pkill -f wineserver"])
+        setupProgress.removeValue(forKey: id)
+        if let i = games.firstIndex(where: { $0.id == id }) {
+            games[i].setupStatus = .notSetup
+            games[i].setupError = "Setup cancelled by user."
+            save()
         }
     }
 
@@ -94,7 +111,8 @@ class GameStore: ObservableObject {
         games[i].setupStatus = .installing
         games[i].setupError = ""
         save()
-        Task { await runSetup(gameID: id) }
+        let task = Task { await runSetup(gameID: id) }
+        setupTasks[id] = task
     }
 
     // MARK: - Setup pipeline

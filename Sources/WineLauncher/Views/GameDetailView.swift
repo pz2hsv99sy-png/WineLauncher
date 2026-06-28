@@ -160,6 +160,15 @@ struct GameDetailView: View {
                             Spacer()
                             Text(p.etaString)
                                 .font(.caption).foregroundStyle(.secondary)
+                            Button {
+                                store.cancelSetup(id: game.id)
+                            } label: {
+                                Image(systemName: "stop.circle.fill")
+                                    .foregroundStyle(.red)
+                                    .font(.title3)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Cancel setup")
                         }
                         ProgressView(value: p.fraction)
                             .progressViewStyle(.linear)
