@@ -21,13 +21,13 @@ struct ContentView: View {
                 emptyState
             }
         }
-        .sheet(isPresented: $showAddGame) {
-            AddGameView()
-                .environmentObject(store)
-                .onDisappear {
-                    // Select the newest game after adding
+        .onChange(of: showAddGame) { _, show in
+            if show {
+                AddGameWindowController.shared.open(store: store) {
                     selectedGameID = store.games.last?.id
+                    showAddGame = false
                 }
+            }
         }
     }
 
@@ -38,7 +38,7 @@ struct ContentView: View {
             // Header
             HStack {
                 Image(systemName: "gamecontroller.fill").foregroundStyle(Color.accentColor)
-                Text("Wine Launcher").font(.headline)
+                Text("Elvius Gaming").font(.headline)
                 Spacer()
                 Button { showAddGame = true } label: {
                     Image(systemName: "plus.circle.fill").font(.title3).foregroundStyle(Color.accentColor)

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct WineLauncherApp: App {
+struct ElviusGamingApp: App {
     @StateObject private var store = GameStore()
 
     var body: some Scene {

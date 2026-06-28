@@ -21,6 +21,8 @@
 		AA000012 /* ResourceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100012 /* ResourceMonitor.swift */; };
 		AA000013 /* HUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100013 /* HUDView.swift */; };
 		AA000014 /* SetupProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100014 /* SetupProgress.swift */; };
+		AA000015 /* AddGameWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100015 /* AddGameWindowController.swift */; };
+		AA000016 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA100016 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +40,8 @@
 		AA100012 /* ResourceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceMonitor.swift; sourceTree = "<group>"; };
 		AA100013 /* HUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDView.swift; sourceTree = "<group>"; };
 		AA100014 /* SetupProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupProgress.swift; sourceTree = "<group>"; };
+		AA100015 /* AddGameWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddGameWindowController.swift; sourceTree = "<group>"; };
+		AA100016 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA200001 /* WineLauncher.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WineLauncher.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -87,6 +91,7 @@
 				AA510001 /* Models */,
 				AA520001 /* Views */,
 				AA530001 /* Services */,
+				AA100016 /* Assets.xcassets */,
 			);
 			name = Sources;
 			path = Sources/WineLauncher;
@@ -112,6 +117,7 @@
 				AA100007 /* AddGameView.swift */,
 				AA100008 /* LogView.swift */,
 				AA100013 /* HUDView.swift */,
+				AA100015 /* AddGameWindowController.swift */,
 			);
 			name = Views;
 			path = Views;
@@ -176,6 +182,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA000016 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -200,6 +207,7 @@
 			AA000012 /* ResourceMonitor.swift in Sources */,
 			AA000013 /* HUDView.swift in Sources */,
 			AA000014 /* SetupProgress.swift in Sources */,
+			AA000015 /* AddGameWindowController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -341,8 +349,10 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = ca.elvius.WineLauncher;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				INFOPLIST_KEY_CFBundleDisplayName = "Elvius Gaming";
+				PRODUCT_BUNDLE_IDENTIFIER = ca.elvius.ElviusGaming;
+				PRODUCT_NAME = "Elvius Gaming";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

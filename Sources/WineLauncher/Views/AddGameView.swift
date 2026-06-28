@@ -2,8 +2,10 @@ import SwiftUI
 
 struct AddGameView: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) var dismiss
     @State private var exePath = ""
+    var onDismiss: (() -> Void)? = nil
+
+    private func dismiss() { AddGameWindowController.shared.window?.close() }
     @State private var bottleMode: BottleMode = .new
     @State private var existingBottleID: UUID? = nil
 
