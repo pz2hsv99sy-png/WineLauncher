@@ -9,21 +9,21 @@ enum HUDCorner: String, CaseIterable {
 
 struct HUDView: View {
     @ObservedObject var monitor: ResourceMonitor
-    let gameName: String
+    var gameName: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Title
             HStack(spacing: 6) {
-                Image(systemName: "gamecontroller.fill")
+                Image(systemName: gameName != nil ? "gamecontroller.fill" : "chart.bar.fill")
                     .foregroundStyle(Color.accentColor)
                     .font(.caption.bold())
-                Text(gameName)
+                Text(gameName ?? "System")
                     .font(.caption.bold())
                     .lineLimit(1)
                 Spacer()
                 Circle()
-                    .fill(.green)
+                    .fill(gameName != nil ? Color.green : Color.accentColor)
                     .frame(width: 6, height: 6)
             }
 
@@ -120,7 +120,7 @@ class HUDWindowController: NSWindowController {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func show(gameName: String, corner: HUDCorner) {
+    func show(gameName: String? = nil, corner: HUDCorner = .topRight) {
         self.corner = corner
         let hostingView = NSHostingView(rootView: HUDView(monitor: monitor, gameName: gameName))
         window?.contentView = hostingView
@@ -129,9 +129,13 @@ class HUDWindowController: NSWindowController {
         monitor.start()
     }
 
+    func updateGameName(_ name: String?) {
+        show(gameName: name, corner: corner)
+    }
+
     func hide() {
-        monitor.stop()
-        window?.orderOut(nil)
+        // Never hide — just update to system mode when no game is running
+        updateGameName(nil)
     }
 
     private func positionWindow() {

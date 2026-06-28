@@ -23,6 +23,8 @@
 		AA000014 /* SetupProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100014 /* SetupProgress.swift */; };
 		AA000015 /* AddGameWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100015 /* AddGameWindowController.swift */; };
 		AA000016 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA100016 /* Assets.xcassets */; };
+		AA000017 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = AA100017 /* AppIcon.icns */; };
+		AA000018 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100018 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +44,8 @@
 		AA100014 /* SetupProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupProgress.swift; sourceTree = "<group>"; };
 		AA100015 /* AddGameWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddGameWindowController.swift; sourceTree = "<group>"; };
 		AA100016 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA100017 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		AA100018 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		AA200001 /* WineLauncher.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WineLauncher.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -88,10 +92,12 @@
 			isa = PBXGroup;
 			children = (
 				AA100001 /* WineLauncher.swift */,
+				AA100018 /* AppDelegate.swift */,
 				AA510001 /* Models */,
 				AA520001 /* Views */,
 				AA530001 /* Services */,
 				AA100016 /* Assets.xcassets */,
+				AA100017 /* AppIcon.icns */,
 			);
 			name = Sources;
 			path = Sources/WineLauncher;
@@ -183,6 +189,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA000016 /* Assets.xcassets in Resources */,
+				AA000017 /* AppIcon.icns in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -208,6 +215,7 @@
 			AA000013 /* HUDView.swift in Sources */,
 			AA000014 /* SetupProgress.swift in Sources */,
 			AA000015 /* AddGameWindowController.swift in Sources */,
+			AA000018 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -340,7 +348,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/WineLauncher/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -351,6 +360,7 @@
 				MARKETING_VERSION = 1.0;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_KEY_CFBundleDisplayName = "Elvius Gaming";
+				INFOPLIST_KEY_CFBundleIconFile = AppIcon;
 				PRODUCT_BUNDLE_IDENTIFIER = ca.elvius.ElviusGaming;
 				PRODUCT_NAME = "Elvius Gaming";
 				SDKROOT = macosx;
@@ -368,7 +378,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/WineLauncher/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (

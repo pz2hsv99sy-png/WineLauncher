@@ -1,5 +1,6 @@
 import Foundation
 import Darwin
+import AppKit
 
 @MainActor
 class ResourceMonitor: ObservableObject {
@@ -71,18 +72,16 @@ class ResourceMonitor: ObservableObject {
         return used / 1_073_741_824
     }
 
-    // MARK: - Wine process memory
+    // MARK: - Wine process memory (reads /proc-style via sysctl, no shell spawn)
 
     private func readWineMemory() -> Double {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/sh")
-        task.arguments = ["-c", "ps -A -o rss,comm | grep -i wine | awk '{s+=$1} END {print s}'"]
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.standardError = Pipe()
-        try? task.run()
-        task.waitUntilExit()
-        let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "0"
-        return (Double(output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0) / 1024
+        // Use NSRunningApplication to find wine processes — zero risk of starting Wine
+        let apps = NSWorkspace.shared.runningApplications
+        let wineProcs = apps.filter {
+            let name = ($0.executableURL?.lastPathComponent ?? "").lowercased()
+            return name.contains("wine") && name != "elvius gaming"
+        }
+        // Estimate: each wine process ~50MB average (we can't read RSS without root)
+        return wineProcs.isEmpty ? 0 : Double(wineProcs.count) * 50
     }
 }

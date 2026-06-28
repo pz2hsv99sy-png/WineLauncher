@@ -74,17 +74,33 @@ actor SetupService {
     // nonisolated so it can be called from sync context (GameStore)
     nonisolated func launchEnvSync(for game: Game) -> [String: String] {
         var env = baseEnv(prefix: game.resolvedPrefixPath)
-        // Apple Silicon sync (better than esync on M-series)
         env["WINEMSYNC"] = "1"
-        // DXVK async shader compilation (reduces stutter)
         if game.detection.needsDXVK { env["DXVK_ASYNC"] = "1" }
-        // EAC single-player bypass
         if game.detection.antiCheat == "EAC" {
             env["PROTON_EAC_RUNTIME"] = "0"
             env["EOS_USE_ANTICHEATCLIENT_NULL"] = "1"
         }
-        // BattlEye note (can't be fully bypassed in Wine)
+        // Steam-specific: disable DirectComposition (causes black screen) + allow CEF sandbox bypass
+        if DetectionService.isSteam(exePath: game.exePath) {
+            var overrides = env["WINEDLLOVERRIDES"] ?? ""
+            if !overrides.isEmpty { overrides += ";" }
+            overrides += "dcomp="
+            env["WINEDLLOVERRIDES"] = overrides
+            env["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = ""
+            env["WINE_SIMULATE_WRITECOPY"] = "1"
+        }
         return env
+    }
+
+    // Returns the real steam.exe path inside the prefix (after SteamSetup installs Steam)
+    nonisolated func resolvedSteamExe(for game: Game) -> String {
+        guard DetectionService.isSteam(exePath: game.exePath) else { return game.exePath }
+        let name = URL(fileURLWithPath: game.exePath).lastPathComponent.lowercased()
+        // If it's already steam.exe (not the setup), use as-is
+        if name == "steam.exe" { return game.exePath }
+        // After SteamSetup runs, steam.exe is at C:\Program Files (x86)\Steam\steam.exe
+        let installedSteam = game.resolvedPrefixPath + "/drive_c/Program Files (x86)/Steam/steam.exe"
+        return FileManager.default.fileExists(atPath: installedSteam) ? installedSteam : game.exePath
     }
 
     // MARK: - Internals

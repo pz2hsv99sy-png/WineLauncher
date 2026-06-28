@@ -157,10 +157,17 @@ class GameStore: ObservableObject {
             return
         }
 
-        // All good
+        // All good — if SteamSetup was used, point exePath to the installed steam.exe
         if let i = games.firstIndex(where: { $0.id == gameID }) {
             games[i].setupStatus = .ready
             games[i].setupError = log
+            let installedSteam = games[i].resolvedPrefixPath + "/drive_c/Program Files (x86)/Steam/steam.exe"
+            if DetectionService.isSteam(exePath: games[i].exePath),
+               URL(fileURLWithPath: games[i].exePath).lastPathComponent.lowercased() == "steamsetup.exe",
+               FileManager.default.fileExists(atPath: installedSteam) {
+                games[i].exePath = installedSteam
+                games[i].name = "Steam"
+            }
             save()
         }
         setupProgress.removeValue(forKey: gameID)
@@ -182,6 +189,7 @@ class GameStore: ObservableObject {
         runningGameID = game.id
         launchLog = ""
         HUDWindowController.shared.show(gameName: game.name, corner: hudCorner)
+        HUDWindowController.shared.updateGameName(game.name)
 
         let candidates = ["/opt/homebrew/bin/wine", "/usr/local/bin/wine", "/usr/bin/wine"]
         guard let winePath = candidates.first(where: { FileManager.default.fileExists(atPath: $0) }) else {
@@ -190,9 +198,15 @@ class GameStore: ObservableObject {
             return
         }
 
+        let isSteam = DetectionService.isSteam(exePath: game.exePath)
+        let resolvedExe = SetupService.shared.resolvedSteamExe(for: game)
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: winePath)
-        process.arguments = [game.exePath]
+        // Steam needs -no-cef-sandbox to prevent black screen from CEF renderer
+        var args = [resolvedExe]
+        if isSteam { args += ["-no-cef-sandbox", "-noreactlogin", "-silent"] }
+        process.arguments = args
         process.environment = SetupService.shared.launchEnvSync(for: game)
 
         let pipe = Pipe()
