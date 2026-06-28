@@ -60,6 +60,35 @@ class GameStore: ObservableObject {
         save()
     }
 
+    func installExtra(gameID: UUID, verb: String) {
+        guard let game = games.first(where: { $0.id == gameID }) else { return }
+        guard let i = games.firstIndex(where: { $0.id == gameID }) else { return }
+        games[i].setupStatus = .installing
+        save()
+        Task {
+            let logCB: (String) -> Void = { [weak self] str in
+                Task { @MainActor [weak self] in
+                    guard let self, let idx = self.games.firstIndex(where: { $0.id == gameID }) else { return }
+                    self.games[idx].setupError += str
+                }
+            }
+            let wt = FileManager.default.fileExists(atPath: "/opt/homebrew/bin/winetricks")
+                ? "/opt/homebrew/bin/winetricks" : "/usr/local/bin/winetricks"
+            logCB("\nInstalling \(verb)...\n")
+            await PrerequisitesService.shared.installPrereqs(
+                verb.split(separator: " ").map(String.init),
+                prefix: game.resolvedPrefixPath,
+                log: logCB,
+                progress: { [weak self] p in Task { @MainActor [weak self] in self?.setupProgress[gameID] = p } }
+            )
+            if let idx = self.games.firstIndex(where: { $0.id == gameID }) {
+                self.games[idx].setupStatus = .ready
+                self.save()
+            }
+            self.setupProgress.removeValue(forKey: gameID)
+        }
+    }
+
     func reRunSetup(id: UUID) {
         guard let i = games.firstIndex(where: { $0.id == id }) else { return }
         games[i].setupStatus = .installing

@@ -209,6 +209,56 @@ struct GameDetailView: View {
                 }
             }
 
+            // Optional extras (only shown when game is ready)
+            if game.setupStatus == .ready {
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Optional Extras", systemImage: "plus.circle").font(.headline)
+                        Divider()
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(".NET Framework 4.8").font(.subheadline.bold())
+                                Text("Required by some Unity games, EA App, Ubisoft Connect. Takes ~5 min.")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Install") {
+                                store.installExtra(gameID: game.id, verb: "dotnet48")
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(game.setupStatus == .installing)
+                        }
+                        Divider()
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Media Foundation (mf)").font(.subheadline.bold())
+                                Text("Required for in-game video cutscenes.")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Install") {
+                                store.installExtra(gameID: game.id, verb: "mf")
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        Divider()
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("vcrun2013 + vcrun2010").font(.subheadline.bold())
+                                Text("Older VC++ runtimes for legacy games (pre-2015).")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Install") {
+                                store.installExtra(gameID: game.id, verb: "vcrun2013 vcrun2010")
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                    .padding(4)
+                }
+            }
+
             // Launch log button (if ran before)
             if !store.launchLog.isEmpty {
                 Button { showLog = true } label: {
