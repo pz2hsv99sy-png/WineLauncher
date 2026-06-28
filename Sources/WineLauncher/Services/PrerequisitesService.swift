@@ -6,26 +6,19 @@ actor PrerequisitesService {
 
     static let shared = PrerequisitesService()
 
-    // Full set of prerequisites needed to run modern Windows games + Steam
+    // vcrun2022 already bundles 2015/2017/2019/2022 — no need to install separately
+    // dotnet48 is slow and not required by Steam or most games
     static let steamPrereqs: [String] = [
-        "vcrun2022",    // Visual C++ 2015-2022 (required by almost everything)
-        "vcrun2019",
-        "vcrun2017",
-        "vcrun2015",
-        "vcrun2013",
-        "vcrun2010",
-        "dotnet48",     // .NET Framework 4.8
-        "d3dcompiler_47", // DirectX shader compiler
-        "dxvk",         // DirectX 9/10/11 → Metal
-        "vkd3d",        // DirectX 12 → Metal
-        "corefonts",    // Windows core fonts (avoids UI glitches)
-        "mf",           // Media Foundation (video cutscenes)
+        "vcrun2022",        // VC++ 2015-2022 all-in-one
+        "d3dcompiler_47",   // DirectX shader compiler
+        "dxvk",             // DirectX 9/10/11 → Metal
+        "vkd3d",            // DirectX 12 → Metal
+        "corefonts",        // Windows fonts (avoids UI glitches)
     ]
 
-    // Minimal set for a single game (no Steam)
+    // Same list for individual games — dxvk/vkd3d will be filtered by detection
     static let gamePrereqs: [String] = [
         "vcrun2022",
-        "vcrun2015",
         "d3dcompiler_47",
         "dxvk",
     ]
@@ -48,15 +41,18 @@ actor PrerequisitesService {
         var p = SetupProgress(total: verbs.count, startTime: Date())
         progress(p)
 
+        // Run all verbs in one winetricks call — saves Wine startup overhead per package
+        // But track progress by watching log output for package markers
+        log("  Packages: \(verbs.joined(separator: ", "))\n\n")
+
         for (i, verb) in verbs.enumerated() {
             p.current = i
             p.currentPackage = verb
             progress(p)
-
             log("  [\(i+1)/\(verbs.count)] \(verb)... ")
-            let ok = await run("\(wt) \(verb)", prefix: prefix, log: { _ in })
-            log(ok ? "✓\n" : "✗ (may be optional)\n")
-
+            // -q = quiet (no GUI dialogs), speeds up installs significantly
+            let ok = await run("\(wt) -q \(verb)", prefix: prefix, log: { _ in })
+            log(ok ? "✓\n" : "✗ (skipping)\n")
             p.current = i + 1
             progress(p)
         }
