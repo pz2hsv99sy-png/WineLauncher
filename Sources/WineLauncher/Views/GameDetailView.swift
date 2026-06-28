@@ -9,6 +9,7 @@ struct GameDetailView: View {
 
     private var game: Game? { store.games.first { $0.id == gameID } }
     private var isRunning: Bool { store.runningGameID == gameID }
+    private var progress: SetupProgress? { store.setupProgress[gameID] }
 
     var body: some View {
         if let game {
@@ -147,6 +148,34 @@ struct GameDetailView: View {
                     pathRow("Wine Prefix", game.resolvedPrefixPath)
                 }
                 .padding(4)
+            }
+
+            // Progress bar (visible during setup)
+            if let p = progress, game.setupStatus == .installing {
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Label("Installing prerequisites…", systemImage: "arrow.down.circle")
+                                .font(.headline)
+                            Spacer()
+                            Text(p.etaString)
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        ProgressView(value: p.fraction)
+                            .progressViewStyle(.linear)
+                            .tint(Color.accentColor)
+                        HStack {
+                            Text("[\(p.current)/\(p.total)] \(p.currentPackage)")
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(Int(p.fraction * 100))%")
+                                .font(.caption.bold())
+                                .foregroundStyle(Color.accentColor)
+                        }
+                    }
+                    .padding(4)
+                }
             }
 
             // Setup log / error

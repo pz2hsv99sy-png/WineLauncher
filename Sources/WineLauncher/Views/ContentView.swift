@@ -96,15 +96,31 @@ struct ContentView: View {
             Divider()
 
             // Footer
-            HStack {
-                Circle()
-                    .fill(store.runningGameID != nil ? Color.green : Color.gray.opacity(0.4))
-                    .frame(width: 8, height: 8)
-                Text(store.runningGameID != nil
-                     ? "Running: \(store.games.first { $0.id == store.runningGameID }?.name ?? "")"
-                     : "\(store.games.count) game\(store.games.count == 1 ? "" : "s")")
-                    .font(.caption).foregroundStyle(.secondary)
-                Spacer()
+            VStack(spacing: 4) {
+                HStack {
+                    Circle()
+                        .fill(store.runningGameID != nil ? Color.green : Color.gray.opacity(0.4))
+                        .frame(width: 8, height: 8)
+                    Text(store.runningGameID != nil
+                         ? "Running: \(store.games.first { $0.id == store.runningGameID }?.name ?? "")"
+                         : "\(store.games.count) game\(store.games.count == 1 ? "" : "s")")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                }
+                if store.runningGameID != nil {
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.grid.2x2").font(.caption2).foregroundStyle(.secondary)
+                        Text("HUD:").font(.caption2).foregroundStyle(.secondary)
+                        Picker("", selection: store.hudCornerBinding) {
+                            ForEach(HUDCorner.allCases, id: \.self) { c in
+                                Text(c.rawValue).tag(c)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .controlSize(.mini)
+                    }
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)

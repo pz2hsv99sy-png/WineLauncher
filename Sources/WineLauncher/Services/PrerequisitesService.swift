@@ -30,7 +30,12 @@ actor PrerequisitesService {
         "dxvk",
     ]
 
-    func installPrereqs(_ verbs: [String], prefix: String, log: @escaping (String) -> Void) async -> Bool {
+    func installPrereqs(
+        _ verbs: [String],
+        prefix: String,
+        log: @escaping (String) -> Void,
+        progress: @escaping (SetupProgress) -> Void
+    ) async -> Bool {
         let wt = winetricksPath()
         guard !wt.isEmpty else {
             log("✗ winetricks not found. Install it: brew install winetricks\n")
@@ -38,13 +43,22 @@ actor PrerequisitesService {
         }
 
         log("Installing Windows prerequisites (\(verbs.count) packages)...\n")
-        log("This may take several minutes — packages are downloaded from the internet.\n\n")
+        log("This may take several minutes — packages are downloaded once and cached.\n\n")
 
-        // Install in batches to give better progress feedback
-        for verb in verbs {
-            log("  → \(verb)... ")
+        var p = SetupProgress(total: verbs.count, startTime: Date())
+        progress(p)
+
+        for (i, verb) in verbs.enumerated() {
+            p.current = i
+            p.currentPackage = verb
+            progress(p)
+
+            log("  [\(i+1)/\(verbs.count)] \(verb)... ")
             let ok = await run("\(wt) \(verb)", prefix: prefix, log: { _ in })
             log(ok ? "✓\n" : "✗ (may be optional)\n")
+
+            p.current = i + 1
+            progress(p)
         }
         return true
     }

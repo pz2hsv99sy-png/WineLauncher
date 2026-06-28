@@ -18,6 +18,9 @@
 		AA000009 /* DetectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100009 /* DetectionService.swift */; };
 		AA000010 /* SetupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100010 /* SetupService.swift */; };
 		AA000011 /* PrerequisitesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100011 /* PrerequisitesService.swift */; };
+		AA000012 /* ResourceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100012 /* ResourceMonitor.swift */; };
+		AA000013 /* HUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100013 /* HUDView.swift */; };
+		AA000014 /* SetupProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100014 /* SetupProgress.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +35,9 @@
 		AA100009 /* DetectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetectionService.swift; sourceTree = "<group>"; };
 		AA100010 /* SetupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupService.swift; sourceTree = "<group>"; };
 		AA100011 /* PrerequisitesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrerequisitesService.swift; sourceTree = "<group>"; };
+		AA100012 /* ResourceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceMonitor.swift; sourceTree = "<group>"; };
+		AA100013 /* HUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDView.swift; sourceTree = "<group>"; };
+		AA100014 /* SetupProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupProgress.swift; sourceTree = "<group>"; };
 		AA200001 /* WineLauncher.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WineLauncher.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -68,6 +74,7 @@
 				AA100009 /* DetectionService.swift */,
 				AA100010 /* SetupService.swift */,
 				AA100011 /* PrerequisitesService.swift */,
+				AA100012 /* ResourceMonitor.swift */,
 			);
 			name = Services;
 			path = Services;
@@ -90,6 +97,7 @@
 			children = (
 				AA100002 /* Game.swift */,
 				AA100003 /* GameStore.swift */,
+				AA100014 /* SetupProgress.swift */,
 			);
 			name = Models;
 			path = Models;
@@ -103,6 +111,7 @@
 				AA100006 /* GameDetailView.swift */,
 				AA100007 /* AddGameView.swift */,
 				AA100008 /* LogView.swift */,
+				AA100013 /* HUDView.swift */,
 			);
 			name = Views;
 			path = Views;
@@ -188,6 +197,9 @@
 			AA000009 /* DetectionService.swift in Sources */,
 			AA000010 /* SetupService.swift in Sources */,
 			AA000011 /* PrerequisitesService.swift in Sources */,
+			AA000012 /* ResourceMonitor.swift in Sources */,
+			AA000013 /* HUDView.swift in Sources */,
+			AA000014 /* SetupProgress.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

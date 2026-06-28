@@ -1,11 +1,21 @@
 import Foundation
 import Combine
+import SwiftUI
 
 @MainActor
 class GameStore: ObservableObject {
     @Published var games: [Game] = []
     @Published var runningGameID: UUID? = nil
     @Published var launchLog: String = ""
+    @Published var setupProgress: [UUID: SetupProgress] = [:]
+    @Published var hudCorner: HUDCorner = HUDCorner(rawValue: UserDefaults.standard.string(forKey: "hudCorner") ?? "") ?? .topRight
+
+    var hudCornerBinding: Binding<HUDCorner> {
+        Binding(get: { self.hudCorner }, set: { v in
+            self.hudCorner = v
+            UserDefaults.standard.set(v.rawValue, forKey: "hudCorner")
+        })
+    }
 
     private let saveURL: URL = {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -68,11 +78,17 @@ class GameStore: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 if let i = self.games.firstIndex(where: { $0.id == gameID }) {
-                    self.games[i].setupError = log  // reuse setupError as install log while installing
+                    self.games[i].setupError = log
                 }
                 log += str
             }
         }
+        let progressCB: (SetupProgress) -> Void = { [weak self] p in
+            Task { @MainActor [weak self] in self?.setupProgress[gameID] = p }
+        }
+
+        // Kick off with a zeroed progress so the bar appears immediately
+        setupProgress[gameID] = SetupProgress(total: 1)
 
         logCB("Scanning \(game.name)...\n")
         logCB("  Arch: \(game.detection.arch)  |  DirectX: \(game.detection.directX)\n")
@@ -81,14 +97,16 @@ class GameStore: ObservableObject {
 
         guard let winePath = await SetupService.shared.ensureWine(log: logCB) else {
             markError(id: gameID, msg: "Wine installation failed. Open Terminal and run: brew install --cask wine-stable")
+            setupProgress.removeValue(forKey: gameID)
             return
         }
 
         let _ = await SetupService.shared.ensureWinetricks(log: logCB)
 
-        let ok = await SetupService.shared.setupPrefix(for: game, winePath: winePath, log: logCB)
+        let ok = await SetupService.shared.setupPrefix(for: game, winePath: winePath, log: logCB, progress: progressCB)
         if !ok {
             markError(id: gameID, msg: "Prefix setup failed. Check the log for details.")
+            setupProgress.removeValue(forKey: gameID)
             return
         }
 
@@ -98,6 +116,7 @@ class GameStore: ObservableObject {
             games[i].setupError = log
             save()
         }
+        setupProgress.removeValue(forKey: gameID)
     }
 
     private func markError(id: UUID, msg: String) {
@@ -115,6 +134,7 @@ class GameStore: ObservableObject {
 
         runningGameID = game.id
         launchLog = ""
+        HUDWindowController.shared.show(gameName: game.name, corner: hudCorner)
 
         let candidates = ["/opt/homebrew/bin/wine", "/usr/local/bin/wine", "/usr/bin/wine"]
         guard let winePath = candidates.first(where: { FileManager.default.fileExists(atPath: $0) }) else {
@@ -149,6 +169,7 @@ class GameStore: ObservableObject {
                 errPipe.fileHandleForReading.readabilityHandler = nil
                 self.launchLog += "\n[Exited with code \(proc.terminationStatus)]"
                 self.runningGameID = nil
+                HUDWindowController.shared.hide()
                 if var g = self.games.first(where: { $0.id == game.id }) {
                     g.lastPlayed = Date()
                     self.update(game: g)
@@ -168,6 +189,7 @@ class GameStore: ObservableObject {
     func stopRunning() {
         launchProcess?.terminate()
         launchProcess = nil
+        HUDWindowController.shared.hide()
     }
 
     // MARK: - Persistence

@@ -42,7 +42,7 @@ actor SetupService {
         return await runShell("brew install winetricks", log: log)
     }
 
-    func setupPrefix(for game: Game, winePath: String, log: @escaping (String) -> Void) async -> Bool {
+    func setupPrefix(for game: Game, winePath: String, log: @escaping (String) -> Void, progress: @escaping (SetupProgress) -> Void = { _ in }) async -> Bool {
         let prefix = game.resolvedPrefixPath
         let arch = game.detection.arch == "x86" ? "win32" : "win64"
 
@@ -59,7 +59,7 @@ actor SetupService {
         let prereqs = game.detection.needsVKD3D
             ? PrerequisitesService.steamPrereqs          // full set for DX12/Steam
             : PrerequisitesService.gamePrereqs           // lighter set for simpler games
-        await PrerequisitesService.shared.installPrereqs(prereqs, prefix: prefix, log: log)
+        await PrerequisitesService.shared.installPrereqs(prereqs, prefix: prefix, log: log, progress: progress)
 
         // DXVK / VKD3D are included in prereqs above — skip duplicate installs
         // EAC single-player bypass: env vars applied at launch, no file changes needed
