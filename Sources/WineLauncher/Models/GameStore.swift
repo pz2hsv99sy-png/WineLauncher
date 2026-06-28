@@ -19,19 +19,23 @@ class GameStore: ObservableObject {
     init() { load() }
 
     // Called when user adds an .exe — scans + auto-sets up
-    func addAndSetup(exePath: String) {
+    func addAndSetup(exePath: String, sharedPrefix: String? = nil) {
         let name = URL(fileURLWithPath: exePath)
             .deletingLastPathComponent()
             .lastPathComponent
-        var game = Game(name: name, exePath: exePath, prefixPath: "")
+        var game = Game(name: name, exePath: exePath, prefixPath: sharedPrefix ?? "")
         game.detection = DetectionService.detect(exePath: exePath)
-        game.setupStatus = .installing
+        // If sharing an existing bottle, skip full setup — prefix is already configured
+        game.setupStatus = sharedPrefix != nil ? .ready : .installing
+        if sharedPrefix != nil {
+            game.setupError = "Using shared bottle at \(sharedPrefix!)\nNo additional setup needed."
+        }
         games.append(game)
         save()
 
-        let id = game.id
-        Task {
-            await runSetup(gameID: id)
+        if sharedPrefix == nil {
+            let id = game.id
+            Task { await runSetup(gameID: id) }
         }
     }
 

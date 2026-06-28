@@ -22,7 +22,7 @@ actor SetupService {
         }
 
         log("Wine not found. Installing via Homebrew...\n")
-        let result = await runShell("brew install --cask --no-quarantine wine-stable", log: log)
+        let result = await runShell("brew install --cask wine-stable", log: log)
         if result {
             for path in candidates {
                 if FileManager.default.fileExists(atPath: path) { return path }
