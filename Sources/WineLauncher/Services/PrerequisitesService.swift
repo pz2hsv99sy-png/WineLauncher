@@ -51,7 +51,7 @@ actor PrerequisitesService {
             progress(p)
             log("  [\(i+1)/\(verbs.count)] \(verb)... ")
             // -q = quiet (no GUI dialogs), speeds up installs significantly
-            let ok = await run("\(wt) -q \(verb)", prefix: prefix, log: { _ in })
+            let ok = await run("\(wt) -q --force \(verb)", prefix: prefix, log: { _ in })
             log(ok ? "✓\n" : "✗ (skipping)\n")
             p.current = i + 1
             progress(p)
@@ -61,6 +61,17 @@ actor PrerequisitesService {
 
     private func winetricksPath() -> String {
         for p in ["/opt/homebrew/bin/winetricks", "/usr/local/bin/winetricks"] {
+            if FileManager.default.fileExists(atPath: p) { return p }
+        }
+        return ""
+    }
+
+    // Locates the wine binary winetricks should drive. When the app is launched
+    // from a .app bundle the PATH is minimal (/usr/bin:/bin), so winetricks
+    // cannot find wine on its own — every verb then fails instantly. We must
+    // point it at an explicit wine and prepend its directory to PATH.
+    private func winePath() -> String {
+        for p in ["/opt/homebrew/bin/wine", "/usr/local/bin/wine", "/usr/bin/wine"] {
             if FileManager.default.fileExists(atPath: p) { return p }
         }
         return ""
@@ -76,6 +87,19 @@ actor PrerequisitesService {
             env["WINEPREFIX"] = prefix
             env["WINEDEBUG"] = "-all"
             env["DISPLAY"] = ""         // suppress spurious X11 warnings
+            // Tell winetricks exactly which wine to use, and make sure its bin
+            // dir is on PATH (GUI-app PATH lacks /opt/homebrew/bin).
+            let wine = winePath()
+            if !wine.isEmpty {
+                let binDir = (wine as NSString).deletingLastPathComponent
+                env["WINE"] = wine
+                let wine64 = binDir + "/wine64"
+                env["WINE64"] = FileManager.default.fileExists(atPath: wine64) ? wine64 : wine
+                let server = binDir + "/wineserver"
+                if FileManager.default.fileExists(atPath: server) { env["WINESERVER"] = server }
+                let existingPath = env["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
+                env["PATH"] = "\(binDir):/opt/homebrew/bin:/usr/local/bin:\(existingPath)"
+            }
             proc.environment = env
             let pipe = Pipe()
             proc.standardOutput = pipe

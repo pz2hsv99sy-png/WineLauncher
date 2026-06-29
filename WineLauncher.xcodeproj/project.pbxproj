@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		AA000001 /* WineLauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001 /* WineLauncher.swift */; };
 		AA000002 /* Game.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100002 /* Game.swift */; };
+		AA000096 /* AchievementsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100096 /* AchievementsService.swift */; };
+		AA000097 /* Achievement.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100097 /* Achievement.swift */; };
+		AA000099 /* Bottle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100099 /* Bottle.swift */; };
 		AA000003 /* GameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100003 /* GameStore.swift */; };
 		AA000004 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100004 /* ContentView.swift */; };
 		AA000005 /* GameRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100005 /* GameRowView.swift */; };
@@ -30,6 +33,9 @@
 /* Begin PBXFileReference section */
 		AA100001 /* WineLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WineLauncher.swift; sourceTree = "<group>"; };
 		AA100002 /* Game.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Game.swift; sourceTree = "<group>"; };
+		AA100096 /* AchievementsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Services/AchievementsService.swift; sourceTree = "<group>"; };
+		AA100097 /* Achievement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Achievement.swift; sourceTree = "<group>"; };
+		AA100099 /* Bottle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bottle.swift; sourceTree = "<group>"; };
 		AA100003 /* GameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameStore.swift; sourceTree = "<group>"; };
 		AA100004 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AA100005 /* GameRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameRowView.swift; sourceTree = "<group>"; };
@@ -107,6 +113,9 @@
 			isa = PBXGroup;
 			children = (
 				AA100002 /* Game.swift */,
+				AA100096 /* AchievementsService.swift */,
+				AA100097 /* Achievement.swift */,
+				AA100099 /* Bottle.swift */,
 				AA100003 /* GameStore.swift */,
 				AA100014 /* SetupProgress.swift */,
 			);
@@ -202,6 +211,9 @@
 			files = (
 				AA000001 /* WineLauncher.swift in Sources */,
 				AA000002 /* Game.swift in Sources */,
+				AA000096 /* AchievementsService.swift in Sources */,
+				AA000097 /* Achievement.swift in Sources */,
+				AA000099 /* Bottle.swift in Sources */,
 				AA000003 /* GameStore.swift in Sources */,
 				AA000004 /* ContentView.swift in Sources */,
 				AA000005 /* GameRowView.swift in Sources */,

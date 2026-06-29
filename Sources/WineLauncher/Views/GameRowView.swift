@@ -29,9 +29,21 @@ struct GameRowView: View {
             )
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(game.name)
-                    .font(.subheadline.weight(.medium))
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    Text(game.name)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                    Text(game.os.rawValue.uppercased())
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4).padding(.vertical, 1)
+                        .background(Color.primary.opacity(0.08), in: Capsule())
+                    if game.totalPlaytime > 0 {
+                        Text("· \(game.playtimeFormatted)")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
                 HStack(spacing: 4) {
                     if isRunning {
                         Image(systemName: "circle.fill").font(.system(size: 6)).foregroundStyle(.green)

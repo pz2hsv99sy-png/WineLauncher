@@ -19,7 +19,7 @@ struct HUDView: View {
                     .foregroundStyle(Color.accentColor)
                     .font(.caption.bold())
                 Text(gameName ?? "System")
-                    .font(.caption.bold())
+                    .font(.system(.caption, design: .rounded).bold())
                     .lineLimit(1)
                 Spacer()
                 Circle()
@@ -48,7 +48,7 @@ struct HUDView: View {
                 color: ramFraction > 0.85 ? .red : ramFraction > 0.65 ? .orange : .blue
             )
 
-            // Wine memory
+            // Wine memory + history graph
             if monitor.wineMemoryMB > 0 {
                 resourceRow(
                     icon: "wineglass",
@@ -57,6 +57,8 @@ struct HUDView: View {
                     fraction: min(1, monitor.wineMemoryMB / 4096),
                     color: .purple
                 )
+                Sparkline(samples: monitor.wineHistory, color: .purple)
+                    .frame(height: 26)
             }
         }
         .padding(12)
@@ -75,9 +77,11 @@ struct HUDView: View {
         VStack(spacing: 3) {
             HStack {
                 Image(systemName: icon).font(.caption2).foregroundStyle(color).frame(width: 14)
-                Text(label).font(.caption2).foregroundStyle(.secondary)
+                Text(label).font(.system(.caption2, design: .rounded).weight(.medium)).foregroundStyle(.secondary)
                 Spacer()
-                Text(value).font(.caption.monospaced().bold()).foregroundStyle(.primary)
+                // Rounded font with monospaced digits = clean look + stable width
+                Text(value).font(.system(.caption, design: .rounded).weight(.semibold).monospacedDigit())
+                    .foregroundStyle(.primary)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -90,6 +94,52 @@ struct HUDView: View {
                 }
             }
             .frame(height: 4)
+        }
+    }
+}
+
+// MARK: - RAM history sparkline
+
+struct Sparkline: View {
+    let samples: [Double]
+    var color: Color
+
+    var body: some View {
+        GeometryReader { geo in
+            let pts = samples
+            let maxV = max(pts.max() ?? 1, 1)
+            let minV = min(pts.min() ?? 0, maxV)
+            let range = max(maxV - minV, 1)
+            ZStack {
+                RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.06))
+                if pts.count > 1 {
+                    // Filled area under the curve
+                    path(in: geo.size, pts: pts, minV: minV, range: range, closed: true)
+                        .fill(color.opacity(0.18))
+                    // Line on top
+                    path(in: geo.size, pts: pts, minV: minV, range: range, closed: false)
+                        .stroke(color.opacity(0.9), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
+                }
+            }
+        }
+    }
+
+    private func path(in size: CGSize, pts: [Double], minV: Double, range: Double, closed: Bool) -> Path {
+        Path { p in
+            let stepX = size.width / CGFloat(max(pts.count - 1, 1))
+            func point(_ i: Int) -> CGPoint {
+                let x = CGFloat(i) * stepX
+                let norm = (pts[i] - minV) / range
+                let y = size.height - CGFloat(norm) * size.height
+                return CGPoint(x: x, y: y)
+            }
+            p.move(to: point(0))
+            for i in 1..<pts.count { p.addLine(to: point(i)) }
+            if closed {
+                p.addLine(to: CGPoint(x: size.width, y: size.height))
+                p.addLine(to: CGPoint(x: 0, y: size.height))
+                p.closeSubpath()
+            }
         }
     }
 }
@@ -114,9 +164,23 @@ class HUDWindowController: NSWindowController {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
+        // Greyed/translucent so it stays discreet over the game.
+        panel.alphaValue = 0.6
+        // Let the user drag the HUD anywhere by its background.
+        panel.isMovableByWindowBackground = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         super.init(window: panel)
+        panel.delegate = self
     }
+
+    // Once the user has dragged the HUD we keep its position instead of
+    // snapping it back to a corner on the next show.
+    private var userMovedHUD = false
+    // True while a game is running; the HUD is only visible when the game
+    // (a Wine process) is the frontmost app, and hidden when the user switches
+    // to another app.
+    private var gameActive = false
+    private var activationObservers: [NSObjectProtocol] = []
 
     required init?(coder: NSCoder) { fatalError() }
 
@@ -125,8 +189,10 @@ class HUDWindowController: NSWindowController {
         let hostingView = NSHostingView(rootView: HUDView(monitor: monitor, gameName: gameName))
         window?.contentView = hostingView
         positionWindow()
-        window?.orderFront(nil)
+        gameActive = true
         monitor.start()
+        observeAppFocus()
+        updateVisibility()
     }
 
     func updateGameName(_ name: String?) {
@@ -134,11 +200,42 @@ class HUDWindowController: NSWindowController {
     }
 
     func hide() {
-        // Never hide — just update to system mode when no game is running
-        updateGameName(nil)
+        // Only shown while a game runs — actually hide it when the game stops.
+        gameActive = false
+        window?.orderOut(nil)
+        monitor.stop()
+        for o in activationObservers { NSWorkspace.shared.notificationCenter.removeObserver(o) }
+        activationObservers.removeAll()
+    }
+
+    private func observeAppFocus() {
+        guard activationObservers.isEmpty else { return }
+        let nc = NSWorkspace.shared.notificationCenter
+        for note in [NSWorkspace.didActivateApplicationNotification,
+                     NSWorkspace.didDeactivateApplicationNotification] {
+            let o = nc.addObserver(forName: note, object: nil, queue: .main) { [weak self] _ in
+                self?.updateVisibility()
+            }
+            activationObservers.append(o)
+        }
+    }
+
+    // Show the HUD only when the frontmost app is the game (a Wine process).
+    private func updateVisibility() {
+        guard gameActive, let win = window else { return }
+        let front = NSWorkspace.shared.frontmostApplication
+        let name = (front?.executableURL?.lastPathComponent ?? "").lowercased()
+        let isGameFront = name.contains("wine")
+        if isGameFront {
+            if !win.isVisible { win.orderFront(nil) }
+        } else {
+            if win.isVisible { win.orderOut(nil) }
+        }
     }
 
     private func positionWindow() {
+        // Respect a position the user dragged the HUD to.
+        guard !userMovedHUD else { return }
         guard let screen = NSScreen.main, let win = window else { return }
         let margin: CGFloat = 16
         let sw = screen.visibleFrame
@@ -154,5 +251,12 @@ class HUDWindowController: NSWindowController {
         case .bottomRight: x = sw.maxX - ww - margin;     y = sw.minY + margin
         }
         win.setFrameOrigin(NSPoint(x: x, y: y))
+    }
+}
+
+extension HUDWindowController: NSWindowDelegate {
+    func windowDidMove(_ notification: Notification) {
+        // User dragged the HUD — remember it and stop auto-positioning.
+        userMovedHUD = true
     }
 }

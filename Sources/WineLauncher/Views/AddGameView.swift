@@ -4,6 +4,7 @@ struct AddGameView: View {
     @EnvironmentObject var store: GameStore
     @State private var exePath = ""
     var onDismiss: (() -> Void)? = nil
+    var preselectBottlePath: String? = nil   // when adding software into a specific bottle
 
     private func dismiss() { AddGameWindowController.shared.window?.close() }
     @State private var bottleMode: BottleMode = .new
@@ -183,7 +184,10 @@ struct AddGameView: View {
                 Spacer()
                 Button("Cancel") { dismiss() }
                 Button("Add & Setup") {
-                    let sharedPrefix = bottleMode == .existing ? selectedBottle?.resolvedPrefixPath : nil
+                    // A pre-selected bottle (from the bottle's "+") wins; otherwise
+                    // use the picker's choice.
+                    let sharedPrefix = preselectBottlePath
+                        ?? (bottleMode == .existing ? selectedBottle?.resolvedPrefixPath : nil)
                     store.addAndSetup(exePath: exePath, sharedPrefix: sharedPrefix)
                     dismiss()
                 }

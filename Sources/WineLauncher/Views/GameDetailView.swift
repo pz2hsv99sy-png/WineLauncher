@@ -21,15 +21,8 @@ struct GameDetailView: View {
                 }
             }
             .background(Color(nsColor: .windowBackgroundColor))
-            .sheet(isPresented: $showLog) {
-                LogView(log: store.launchLog, isRunning: store.runningGameID == game.id) {
-                    store.stopRunning()
-                }
+            .onAppear { store.loadAchievements(for: game) }
             }
-            .onChange(of: store.runningGameID) { _, id in
-                if id == game.id { showLog = true }
-            }
-        }
     }
 
     // MARK: - Header
@@ -75,7 +68,14 @@ struct GameDetailView: View {
                 // Status badge
                 statusBadge(game)
 
-                Text(game.lastPlayedFormatted).font(.caption).foregroundStyle(.tertiary)
+                HStack(spacing: 10) {
+                    Label(game.lastPlayedFormatted, systemImage: "clock.arrow.circlepath")
+                    if game.totalPlaytime > 0 {
+                        Label(game.playtimeFormatted, systemImage: "hourglass")
+                    }
+                    Label(game.os.rawValue, systemImage: game.os.symbol)
+                }
+                .font(.caption).foregroundStyle(.tertiary)
             }
 
             Spacer()
@@ -101,10 +101,109 @@ struct GameDetailView: View {
                 Text(isRunning ? "Running" : game.setupStatus == .ready ? "Play" : game.setupStatus.rawValue)
                     .font(.caption.bold())
                     .foregroundStyle(isRunning ? .orange : game.setupStatus == .ready ? Color.accentColor : .secondary)
+
+                // Per-bottle actions
+                HStack(spacing: 6) {
+                    Button {
+                        store.openCDrive(for: game)
+                    } label: {
+                        Label("Disque C:", systemImage: "externaldrive").labelStyle(.iconOnly)
+                    }
+                    .help("Ouvrir le disque C: de la bouteille")
+
+                    Button {
+                        promptCustomCommand(for: game)
+                    } label: {
+                        Label("Commande", systemImage: "terminal").labelStyle(.iconOnly)
+                    }
+                    .help("Lancer une commande dans la bouteille")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .padding(.top, 4)
             }
         }
         .padding(24)
         .background(.ultraThinMaterial)
+    }
+
+    @ViewBuilder
+    private func achievementsSection(_ game: Game) -> some View {
+        let list = store.achievements[game.id] ?? []
+        if !list.isEmpty {
+            let unlocked = list.filter { $0.unlocked }.count
+            let total = list.count
+            let cols = [GridItem(.adaptive(minimum: 54, maximum: 54), spacing: 8)]
+            GroupBox {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Label("Succès", systemImage: "trophy.fill").font(.headline)
+                        Spacer()
+                        Text("\(unlocked) / \(total)").font(.subheadline.monospacedDigit().bold())
+                            .foregroundStyle(.secondary)
+                    }
+                    // Progress bar
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.primary.opacity(0.1))
+                            Capsule().fill(Color.yellow)
+                                .frame(width: geo.size.width * (total > 0 ? CGFloat(unlocked) / CGFloat(total) : 0))
+                        }
+                    }.frame(height: 6)
+                    // Icon grid (locked ones greyed)
+                    LazyVGrid(columns: cols, spacing: 8) {
+                        ForEach(list) { ach in
+                            AsyncImage(url: URL(string: ach.iconURL)) { img in
+                                img.resizable().scaledToFit()
+                            } placeholder: {
+                                Color.primary.opacity(0.08)
+                            }
+                            .frame(width: 48, height: 48)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .saturation(ach.unlocked ? 1 : 0)
+                            .opacity(ach.unlocked ? 1 : 0.35)
+                            .help("\(ach.name)\(ach.unlocked ? " ✓" : "")\n\(ach.desc)")
+                        }
+                    }
+                }.padding(4)
+            }
+        }
+    }
+
+    // Finalize an installer: find the installed exe, re-point, trash the setup.
+    private func finalizeInstall(_ game: Game) {
+        let candidates = store.finalizeInstall(gameID: game.id)
+        if candidates.count <= 1 { return }   // auto-picked (or none found)
+
+        // Multiple candidates — let the user choose the real game exe.
+        let alert = NSAlert()
+        alert.messageText = "Quel est le jeu installé ?"
+        alert.informativeText = "Plusieurs exécutables trouvés. Choisis le bon — le setup ira à la corbeille."
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 360, height: 26))
+        for c in candidates { popup.addItem(withTitle: (c as NSString).lastPathComponent); popup.lastItem?.toolTip = c }
+        alert.accessoryView = popup
+        alert.addButton(withTitle: "Choisir")
+        alert.addButton(withTitle: "Annuler")
+        if alert.runModal() == .alertFirstButtonReturn {
+            let chosen = candidates[popup.indexOfSelectedItem]
+            store.repoint(gameID: game.id, toExe: chosen, trashOldInstaller: game.exePath)
+        }
+    }
+
+    // Ask for a command line and run it inside the game's bottle.
+    private func promptCustomCommand(for game: Game) {
+        let alert = NSAlert()
+        alert.messageText = "Commande dans la bouteille « \(ContentView.bottleName(for: game.resolvedPrefixPath)) »"
+        alert.informativeText = "Exemples : winecfg · regedit · explorer · un autre .exe"
+        alert.addButton(withTitle: "Lancer")
+        alert.addButton(withTitle: "Annuler")
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        field.placeholderString = "winecfg"
+        alert.accessoryView = field
+        if alert.runModal() == .alertFirstButtonReturn {
+            let cmd = field.stringValue.trimmingCharacters(in: .whitespaces)
+            if !cmd.isEmpty { store.runCustomCommand(for: game, command: cmd) }
+        }
     }
 
     // MARK: - Body
@@ -112,6 +211,26 @@ struct GameDetailView: View {
     @ViewBuilder
     private func body(_ game: Game) -> some View {
         VStack(alignment: .leading, spacing: 20) {
+
+            // Achievements
+            achievementsSection(game)
+
+            // Installer banner
+            if store.isInstaller(game.exePath) {
+                GroupBox {
+                    HStack(spacing: 12) {
+                        Image(systemName: "shippingbox.and.arrow.backward").font(.title2).foregroundStyle(.orange)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Installeur détecté").font(.subheadline.bold())
+                            Text("Lance l'installeur (bouton Play), puis Finalise : je pointe vers le jeu installé et j'envoie le setup à la corbeille.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Finaliser") { finalizeInstall(game) }
+                            .buttonStyle(.borderedProminent)
+                    }.padding(4)
+                }
+            }
 
             // Detection results
             GroupBox {
@@ -268,12 +387,40 @@ struct GameDetailView: View {
                 }
             }
 
-            // Launch log button (if ran before)
+            // Launch log — always visible when there's content
             if !store.launchLog.isEmpty {
-                Button { showLog = true } label: {
-                    Label("View last launch log", systemImage: "doc.text").font(.callout)
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Label(isRunning ? "Launch Log (live)" : "Last Launch Log", systemImage: "terminal")
+                                .font(.headline)
+                            if isRunning {
+                                ProgressView().controlSize(.mini).padding(.leading, 4)
+                            }
+                            Spacer()
+                            if isRunning {
+                                Button("Force Stop") { store.stopRunning() }
+                                    .buttonStyle(.borderedProminent).tint(.red).controlSize(.small)
+                            }
+                        }
+                        Divider()
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                Text(store.launchLog)
+                                    .font(.caption.monospaced())
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .id("bottom")
+                            }
+                            .frame(maxHeight: 220)
+                            .background(Color(nsColor: .textBackgroundColor))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .onChange(of: store.launchLog) { _, _ in
+                                proxy.scrollTo("bottom", anchor: .bottom)
+                            }
+                        }
+                    }
+                    .padding(4)
                 }
-                .buttonStyle(.borderless).foregroundStyle(Color.accentColor)
             }
         }
     }

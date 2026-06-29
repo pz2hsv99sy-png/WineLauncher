@@ -8,11 +8,16 @@ class ResourceMonitor: ObservableObject {
     @Published var ramUsedGB: Double = 0
     @Published var ramTotalGB: Double = 0
     @Published var wineMemoryMB: Double = 0
+    @Published var wineHistory: [Double] = []   // recent Wine RAM samples, for the graph
 
     private var timer: Timer?
     private var prevCPU: (user: UInt32, sys: UInt32, idle: UInt32) = (0, 0, 0)
+    private let historyMax = 48
+    private var seeded = false   // first real reading replaces the 0 baseline
 
     func start() {
+        seeded = false
+        wineHistory.removeAll()
         ramTotalGB = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
         timer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in self?.update() }
@@ -26,9 +31,27 @@ class ResourceMonitor: ObservableObject {
     }
 
     private func update() {
-        cpuPercent = readCPU()
-        ramUsedGB = readRAMUsed()
-        wineMemoryMB = readWineMemory()
+        let cpu = readCPU()
+        let ram = readRAMUsed()
+        let wine = readWineMemory()
+
+        // Exponential smoothing so the displayed numbers don't jitter every
+        // tick. First real sample seeds the values directly.
+        let a = 0.35
+        if !seeded {
+            cpuPercent = cpu; ramUsedGB = ram; wineMemoryMB = wine
+            seeded = true
+        } else {
+            cpuPercent  = cpuPercent  * (1 - a) + cpu  * a
+            ramUsedGB   = ramUsedGB   * (1 - a) + ram  * a
+            wineMemoryMB = wineMemoryMB * (1 - a) + wine * a
+        }
+
+        // Keep a rolling history of Wine RAM for the sparkline graph.
+        wineHistory.append(wineMemoryMB)
+        if wineHistory.count > historyMax { wineHistory.removeFirst() }
+
+        objectWillChange.send()
     }
 
     // MARK: - CPU via host_statistics
@@ -72,16 +95,37 @@ class ResourceMonitor: ObservableObject {
         return used / 1_073_741_824
     }
 
-    // MARK: - Wine process memory (reads /proc-style via sysctl, no shell spawn)
+    // MARK: - Wine process memory (real RSS via libproc, no shell spawn)
 
     private func readWineMemory() -> Double {
-        // Use NSRunningApplication to find wine processes — zero risk of starting Wine
-        let apps = NSWorkspace.shared.runningApplications
-        let wineProcs = apps.filter {
-            let name = ($0.executableURL?.lastPathComponent ?? "").lowercased()
-            return name.contains("wine") && name != "elvius gaming"
+        // Enumerate every PID, keep the ones that belong to Wine (the
+        // wine*-preloader / wineserver processes host the game too), and sum
+        // their real resident memory. This replaces the old bogus estimate
+        // (process count × 50 MB) which wildly over-counted orphan processes.
+        let maxPids = Int(proc_listallpids(nil, 0))
+        guard maxPids > 0 else { return 0 }
+        var pids = [pid_t](repeating: 0, count: maxPids + 64)
+        let bytes = proc_listallpids(&pids, Int32(pids.count * MemoryLayout<pid_t>.size))
+        guard bytes > 0 else { return 0 }
+        let n = Int(bytes) / MemoryLayout<pid_t>.size
+
+        var totalBytes: UInt64 = 0
+        var nameBuf = [CChar](repeating: 0, count: 1024)
+        for i in 0..<n {
+            let pid = pids[i]
+            if pid <= 0 { continue }
+            let nlen = proc_name(pid, &nameBuf, UInt32(nameBuf.count))
+            guard nlen > 0 else { continue }
+            let name = String(cString: nameBuf).lowercased()
+            // Wine hosts every Windows process inside a *-preloader; wineserver
+            // is the bottle manager. Both together are the real "Wine" footprint.
+            guard name.contains("wine") else { continue }
+
+            var info = proc_taskinfo()
+            let size = Int32(MemoryLayout<proc_taskinfo>.size)
+            let r = proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &info, size)
+            if r == size { totalBytes += info.pti_resident_size }
         }
-        // Estimate: each wine process ~50MB average (we can't read RSS without root)
-        return wineProcs.isEmpty ? 0 : Double(wineProcs.count) * 50
+        return Double(totalBytes) / 1_048_576.0   // MB
     }
 }

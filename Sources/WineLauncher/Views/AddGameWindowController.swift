@@ -22,9 +22,9 @@ class AddGameWindowController: NSWindowController, NSWindowDelegate {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func open(store: GameStore, onClose: @escaping () -> Void) {
+    func open(store: GameStore, preselectBottle: String? = nil, onClose: @escaping () -> Void) {
         self.onClose = onClose
-        let view = AddGameView()
+        let view = AddGameView(preselectBottlePath: preselectBottle)
             .environmentObject(store)
         window?.contentView = NSHostingView(rootView: view)
         window?.center()
