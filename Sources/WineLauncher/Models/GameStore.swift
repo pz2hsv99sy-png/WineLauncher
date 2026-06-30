@@ -41,10 +41,18 @@ class GameStore: ObservableObject {
     private var activeExeName: String? = nil            // image name for taskkill
     private var launchStartTime: Date? = nil            // to accumulate playtime
     private var memoryWatchdog: Timer? = nil
-    /// Kill a game if Wine RAM exceeds this. Default: 80% of physical RAM, so a
-    /// runaway leak is stopped before the Mac swaps itself to a standstill.
+    /// Kill a game only if Wine RAM runs away catastrophically. Apple Silicon
+    /// handles heavy use via memory compression + fast SSD swap, so a game can
+    /// legitimately use far more than physical RAM and still play fine (Cities
+    /// Skylines runs well at ~22 GB on a 16 GB Mac). The cap is therefore very
+    /// generous — 3× physical RAM — so it only catches a true runaway that
+    /// would otherwise crash the Mac, never a working game.
+    /// Stored in UserDefaults ("memoryCapGB") so it can be tuned.
     var memoryCapBytes: UInt64 = {
-        UInt64(Double(ProcessInfo.processInfo.physicalMemory) * 0.80)
+        let physical = Double(ProcessInfo.processInfo.physicalMemory)
+        let defaultGB = physical / 1_073_741_824 * 1.5   // generous headroom, still protective
+        let gb = UserDefaults.standard.object(forKey: "memoryCapGB") as? Double ?? defaultGB
+        return UInt64(gb * 1_073_741_824)
     }()
     @Published var memoryKillNotice: String? = nil
 
