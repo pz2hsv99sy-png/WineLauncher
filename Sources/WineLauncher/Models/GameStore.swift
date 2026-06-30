@@ -40,6 +40,13 @@ class GameStore: ObservableObject {
     private var activeWineInvocation: [String]? = nil   // tokens to run wine (incl. arch wrapper)
     private var activeExeName: String? = nil            // image name for taskkill
     private var launchStartTime: Date? = nil            // to accumulate playtime
+    private var memoryWatchdog: Timer? = nil
+    /// Kill a game if Wine RAM exceeds this. Default: 80% of physical RAM, so a
+    /// runaway leak is stopped before the Mac swaps itself to a standstill.
+    var memoryCapBytes: UInt64 = {
+        UInt64(Double(ProcessInfo.processInfo.physicalMemory) * 0.80)
+    }()
+    @Published var memoryKillNotice: String? = nil
 
     init() { load(); fetchCoversIfNeeded() }
 
@@ -325,6 +332,7 @@ class GameStore: ObservableObject {
                 pipe.fileHandleForReading.readabilityHandler = nil
                 errPipe.fileHandleForReading.readabilityHandler = nil
                 self.logFlushTimer?.invalidate(); self.logFlushTimer = nil
+                self.memoryWatchdog?.invalidate(); self.memoryWatchdog = nil
                 if !self.logBuffer.isEmpty { self.launchLog += self.logBuffer; self.logBuffer = "" }
                 self.launchLog += "\n[Exited with code \(proc.terminationStatus)]"
                 self.runningGameID = nil
@@ -356,6 +364,7 @@ class GameStore: ObservableObject {
             activeWineInvocation = wineInvocation
             activeExeName = (resolvedExe as NSString).lastPathComponent
             launchStartTime = Date()
+            startMemoryWatchdog(gameName: game.name)
         }
         catch { launchLog += "Launch failed: \(error)"; runningGameID = nil }
     }
@@ -514,6 +523,52 @@ class GameStore: ObservableObject {
         fetchCoversIfNeeded()
     }
 
+    // MARK: - Memory watchdog
+
+    /// Sum the resident memory of all Wine processes (the game runs inside them).
+    private func wineRSSBytes() -> UInt64 {
+        let maxPids = Int(proc_listallpids(nil, 0))
+        guard maxPids > 0 else { return 0 }
+        var pids = [pid_t](repeating: 0, count: maxPids + 64)
+        let bytes = proc_listallpids(&pids, Int32(pids.count * MemoryLayout<pid_t>.size))
+        guard bytes > 0 else { return 0 }
+        let n = Int(bytes) / MemoryLayout<pid_t>.size
+        var total: UInt64 = 0
+        var nameBuf = [CChar](repeating: 0, count: 1024)
+        for i in 0..<n {
+            let pid = pids[i]
+            if pid <= 0 { continue }
+            guard proc_name(pid, &nameBuf, UInt32(nameBuf.count)) > 0 else { continue }
+            let name = String(cString: nameBuf).lowercased()
+            guard name.contains("wine") || name.contains("cities") || name.contains(".exe") else { continue }
+            var info = proc_taskinfo()
+            let size = Int32(MemoryLayout<proc_taskinfo>.size)
+            if proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &info, size) == size {
+                total += info.pti_resident_size
+            }
+        }
+        return total
+    }
+
+    private func startMemoryWatchdog(gameName: String) {
+        memoryWatchdog?.invalidate()
+        memoryKillNotice = nil
+        let cap = memoryCapBytes
+        memoryWatchdog = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.runningGameID != nil else { return }
+                let rss = self.wineRSSBytes()
+                if rss > cap {
+                    let gb = Double(rss) / 1_073_741_824
+                    let capGB = Double(cap) / 1_073_741_824
+                    self.memoryKillNotice = String(format: "%@ a été arrêté : %.1f GB de RAM (limite %.1f GB) pour protéger ton Mac.", gameName, gb, capGB)
+                    self.launchLog += "\n[Watchdog mémoire : \(String(format: "%.1f", gb)) GB > limite \(String(format: "%.1f", capGB)) GB — arrêt forcé]"
+                    self.stopRunning()
+                }
+            }
+        }
+    }
+
     // Open the bottle's C: drive in Finder.
     func openCDrive(for game: Game) {
         let cDrive = game.resolvedPrefixPath + "/drive_c"
@@ -598,6 +653,7 @@ class GameStore: ObservableObject {
         activePrefix = nil
         activeWineInvocation = nil
         activeExeName = nil
+        memoryWatchdog?.invalidate(); memoryWatchdog = nil
         HUDWindowController.shared.hide()
     }
 

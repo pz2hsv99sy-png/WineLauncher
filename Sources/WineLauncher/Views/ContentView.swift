@@ -85,6 +85,14 @@ struct ContentView: View {
             addSoftwareBottlePath = nil
             showAddGame = true
         }
+        .alert("Jeu arrêté (mémoire)", isPresented: Binding(
+            get: { store.memoryKillNotice != nil },
+            set: { if !$0 { store.memoryKillNotice = nil } }
+        )) {
+            Button("OK") { store.memoryKillNotice = nil }
+        } message: {
+            Text(store.memoryKillNotice ?? "")
+        }
     }
 
     // MARK: - Sidebar
